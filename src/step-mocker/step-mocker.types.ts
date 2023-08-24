@@ -32,7 +32,7 @@ export type GithubWorkflowStep = {
   /**
    * Override the default shell settings in the runner's operating system using the shell keyword.
    */
-  shell?: string
+  shell?: string;
 
   /**
    * Specify the working directory of where to run the command.
@@ -74,7 +74,12 @@ export type GithubWorkflow = {
   /**
    * The name of your workflow. GitHub displays the names of your workflows on your repository's actions page. If you omit this field, GitHub sets the name to the workflow's filename.
    */
-  name?: string;
+  name: string;
+
+  /**
+   * The event that triggered the workflow
+   */
+  on: string | Record<string, object>;
 
   /**
    * A workflow run is made up of one or more jobs. Jobs run in parallel by default. To run jobs sequentially, you can define dependencies on other jobs using the jobs.<job_id>.needs keyword.
@@ -88,36 +93,138 @@ export type MockStep = {
 };
 
 // added string type to mockWith for backward compatibility
-export type StepIdentifierUsingName = { name: string; mockWith: GithubWorkflowStep | string };
-export type StepIdentifierUsingId = { id: string; mockWith: GithubWorkflowStep | string };
-export type StepIdentifierUsingUses = { uses: string; mockWith: GithubWorkflowStep | string };
-export type StepIdentifierUsingRun = { run: string; mockWith: GithubWorkflowStep | string };
-export type StepIdentifier =
-  | StepIdentifierUsingName
-  | StepIdentifierUsingId
-  | StepIdentifierUsingUses
-  | StepIdentifierUsingRun;
+type StepIdentifierUsingName = {
+  name: string;
+}
+type StepIdentifierUsingId = {
+  id: string;
+}
+type StepIdentifierUsingUses = {
+  uses: string;
+}
+type StepIdentifierUsingRun = {
+  run: string;
+}
 
-export function isStepIdentifierUsingName(
+type BaseWorkflowStepIdentifier = {
+  mockWith: GithubWorkflowStep | string;
+}
+export type WorkflowStepIdentifierUsingName = StepIdentifierUsingName & BaseWorkflowStepIdentifier;
+export type WorkflowStepIdentifierUsingId = StepIdentifierUsingId & BaseWorkflowStepIdentifier;
+export type WorkflowStepIdentifierUsingUses = StepIdentifierUsingUses & BaseWorkflowStepIdentifier;
+export type WorkflowStepIdentifierUsingRun = StepIdentifierUsingRun & BaseWorkflowStepIdentifier;
+export type WorkflowStepIdentifier =
+  | WorkflowStepIdentifierUsingName
+  | WorkflowStepIdentifierUsingId
+  | WorkflowStepIdentifierUsingUses
+  | WorkflowStepIdentifierUsingRun;
+
+type BaseCompositeStepIdentifier = {
+  mockCompositeAction: StepIdentifier[];
+}
+export type CompositeStepIdentifierUsingRun = StepIdentifierUsingRun & BaseCompositeStepIdentifier;
+export type CompositeStepIdentifierUsingName = StepIdentifierUsingName & BaseCompositeStepIdentifier;
+export type CompositeStepIdentifierUsingId = StepIdentifierUsingId & BaseCompositeStepIdentifier;
+export type CompositeStepIdentifierUsingUses = StepIdentifierUsingUses & BaseCompositeStepIdentifier;
+export type CompositeStepIdentifier =
+  | CompositeStepIdentifierUsingName
+  | CompositeStepIdentifierUsingId
+  | CompositeStepIdentifierUsingUses
+  | CompositeStepIdentifierUsingRun;
+
+type BaseReusableStepIdentifier = {
+  mockReusableWorkflow: MockStep;
+}
+export type ReusableStepIdentifierUsingRun = StepIdentifierUsingRun & BaseReusableStepIdentifier;
+export type ReusableStepIdentifierUsingName = StepIdentifierUsingName & BaseReusableStepIdentifier;
+export type ReusableStepIdentifierUsingId = StepIdentifierUsingId & BaseReusableStepIdentifier;
+export type ReusableStepIdentifierUsingUses = StepIdentifierUsingUses & BaseReusableStepIdentifier;
+export type ReusableStepIdentifier =
+  | ReusableStepIdentifierUsingName
+  | ReusableStepIdentifierUsingId
+  | ReusableStepIdentifierUsingUses
+  | ReusableStepIdentifierUsingRun;
+
+export type StepIdentifier =
+  | WorkflowStepIdentifier
+  | CompositeStepIdentifier
+  | ReusableStepIdentifier;
+
+function hasProperty<
+  T extends StepIdentifier,
+  K extends string
+>(obj: T, key: K): obj is T {
+  return Object.prototype.hasOwnProperty.call(obj, key)
+}
+export function isStepIdentifierUsingName<
+T extends ReusableStepIdentifierUsingName | CompositeStepIdentifierUsingName | WorkflowStepIdentifierUsingName,
+>(step: StepIdentifier): step is T {
+  if (hasProperty(step, "name")) {
+
+  }
+  return hasProperty(step, "name") 
+}
+
+export function isReusableStepIdentifier (
   step: StepIdentifier
-): step is StepIdentifierUsingName {
-  return Object.prototype.hasOwnProperty.call(step, "name");
+): step is CompositeStepIdentifier {
+  return Object.prototype.hasOwnProperty.call(step, "mockReusableWorkflow");
+}
+
+export function isCompositeStepIdentifier (
+  step: StepIdentifier
+): step is CompositeStepIdentifier {
+  return Object.prototype.hasOwnProperty.call(step, "mockCompositeAction");
+}
+
+export function isWorkflowStepIdentifier (
+  step: StepIdentifier
+): step is WorkflowStepIdentifier {
+  return Object.prototype.hasOwnProperty.call(step, "mockWith");
 }
 
 export function isStepIdentifierUsingId(
   step: StepIdentifier
-): step is StepIdentifierUsingId {
+): step is WorkflowStepIdentifierUsingId | CompositeStepIdentifierUsingId | ReusableStepIdentifierUsingId {
   return Object.prototype.hasOwnProperty.call(step, "id");
 }
 
 export function isStepIdentifierUsingUses(
   step: StepIdentifier
-): step is StepIdentifierUsingUses {
+): step is WorkflowStepIdentifierUsingUses | CompositeStepIdentifierUsingUses | ReusableStepIdentifierUsingUses {
   return Object.prototype.hasOwnProperty.call(step, "uses");
 }
 
 export function isStepIdentifierUsingRun(
   step: StepIdentifier
-): step is StepIdentifierUsingUses {
+): step is WorkflowStepIdentifierUsingRun | CompositeStepIdentifierUsingRun | ReusableStepIdentifierUsingRun {
   return Object.prototype.hasOwnProperty.call(step, "run");
+}
+
+export type CompositeAction = {
+  name: string;
+  description: string;
+  inputs?: {
+    [key: string]: {
+      description?: string;
+      required?: boolean;
+      default?: string | number | boolean;
+    };
+  };
+  outputs?: {
+    [key: string]: {
+      description?: string;
+      value?: string;
+    };
+  };
+  runs: {
+    using: "composite" | "node16" | "docker";
+    steps: GithubWorkflowStep[];
+  };
+};
+
+export function isCompositeAction(
+  workflow: CompositeAction | GithubWorkflow
+): workflow is CompositeAction {
+  return Object.prototype.hasOwnProperty.call(workflow, "runs");
 }
